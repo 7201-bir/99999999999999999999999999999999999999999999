@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自動踩地雷</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>自動踩地雷遊戲</h1>
+        <div class="controls">
+            <button id="startBtn">開始新遊戲</button>
+            <button id="autoPlayBtn">自動遊玩</button>
+            <div class="stats">
+                <span>剩餘地雷：<span id="mineCount">0</span></span>
+                <span>耗時：<span id="timer">0</span>秒</span>
+            </div>
+        </div>
+        <div id="board" class="board"></div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
