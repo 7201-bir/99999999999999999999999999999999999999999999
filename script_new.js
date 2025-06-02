@@ -205,20 +205,18 @@ class Minesweeper {
         }, 1000);
     }
 
-    // 自動遊玩邏輯
     autoPlay() {
         if (this.gameOver) return;
         
         if (this.isFirstClick) {
-            // 在地獄模式下，永遠選擇左上角開始（最保守的策略）
+            // 在地獄模式下，選擇左上角開始是最保守的選擇
             this.handleClick(0, 0);
             setTimeout(() => this.autoPlay(), 300);
             return;
         }
 
+        // 1. 掃描整個棋盤，尋找確定安全或確定是地雷的格子
         let foundAction = false;
-
-        // 1. 先確保所有已知的地雷都被標記
         for (let i = 0; i < this.rows && !foundAction; i++) {
             for (let j = 0; j < this.cols && !foundAction; j++) {
                 if (this.revealed[i][j] && this.board[i][j] > 0) {
@@ -229,32 +227,94 @@ class Minesweeper {
                     const flaggedCells = surroundingCells.filter(cell => 
                         this.flagged[cell.row][cell.col]
                     );
-
-                    // 在地獄模式中，任何可疑的格子都標記為地雷
-                    if (unrevealedCells.length > 0 && 
-                        this.board[i][j] - flaggedCells.length > 0) {
-                        unrevealedCells.forEach(cell => {
-                            this.toggleFlag(cell.row, cell.col);
+                    
+                    if (unrevealedCells.length > 0) {
+                        // 如果未標記的格子數等於剩餘地雷數，全部都是地雷
+                        if (this.board[i][j] - flaggedCells.length === unrevealedCells.length) {
+                            unrevealedCells.forEach(cell => {
+                                this.toggleFlag(cell.row, cell.col);
+                                foundAction = true;
+                            });
+                        }
+                        // 如果已標記的旗子數等於數字，其他格子就是安全的
+                        else if (flaggedCells.length === this.board[i][j]) {
+                            this.handleClick(unrevealedCells[0].row, unrevealedCells[0].col);
                             foundAction = true;
-                        });
+                        }
                     }
                 }
             }
         }
 
-        // 2. 然後嘗試找到確定安全的格子
+        // 2. 如果沒有找到確定的移動，計算每個格子的地雷機率
         if (!foundAction) {
-            for (let i = 0; i < this.rows && !foundAction; i++) {
-                for (let j = 0; j < this.cols && !foundAction; j++) {
-                    if (this.revealed[i][j] && this.board[i][j] > 0) {
-                        const surroundingCells = this.getSurroundingCells(i, j);
-                        const flaggedCells = surroundingCells.filter(cell => 
-                            this.flagged[cell.row][cell.col]
-                        );
-                        
-                        // 如果周圍的旗子數量等於數字，其他格子就是安全的
-                        if (flaggedCells.length === this.board[i][j]) {
-                            const safeCells = surroundingCells.filter(cell => 
-                                !this.revealed[cell.row][cell.col] && !this.flagged[cell.row][cell.col]
-                            );
-                            if
+            const unrevealedCells = this.getUnrevealedCells();
+            if (unrevealedCells.length > 0) {
+                // 在地獄模式下，我們需要更激進的策略
+                // 選擇離已知安全區域最近的格子
+                let bestCell = null;
+                let minDistance = Infinity;
+                
+                for (const cell of unrevealedCells) {
+                    const distance = this.getMinDistanceToRevealedCell(cell);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        bestCell = cell;
+                    }
+                }
+                
+                if (bestCell) {
+                    this.handleClick(bestCell.row, bestCell.col);
+                }
+            }
+        }
+
+        // 如果遊戲沒有結束，持續遊玩
+        if (!this.gameOver) {
+            setTimeout(() => this.autoPlay(), 300);
+        }
+    }
+
+    getMinDistanceToRevealedCell(cell) {
+        let minDistance = Infinity;
+        for (let i = 0; i < this.rows; i++) {
+            for (let j = 0; j < this.cols; j++) {
+                if (this.revealed[i][j] && this.board[i][j] !== -1) {
+                    const distance = Math.abs(cell.row - i) + Math.abs(cell.col - j);
+                    minDistance = Math.min(minDistance, distance);
+                }
+            }
+        }
+        return minDistance;
+    }
+
+    getSurroundingCells(row, col) {
+        const cells = [];
+        for (let i = -1; i <= 1; i++) {
+            for (let j = -1; j <= 1; j++) {
+                if (i === 0 && j === 0) continue;
+                const newRow = row + i;
+                const newCol = col + j;
+                if (this.isValidCell(newRow, newCol)) {
+                    cells.push({ row: newRow, col: newCol });
+                }
+            }
+        }
+        return cells;
+    }
+
+    getUnrevealedCells() {
+        const cells = [];
+        for (let i = 0; i < this.rows; i++) {
+            for (let j = 0; j < this.cols; j++) {
+                if (!this.revealed[i][j] && !this.flagged[i][j]) {
+                    cells.push({ row: i, col: j });
+                }
+            }
+        }
+        return cells;
+    }
+}
+
+// 初始化遊戲，90顆地雷（終極地獄模式 - 90%的格子都是地雷！）
+const game = new Minesweeper(10, 10, 90);
